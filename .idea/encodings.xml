@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="Encoding">
+    <file url="file://$PROJECT_DIR$/app/src/main/cpp/include/zBase.h" charset="windows-1251" />
+    <file url="file://$PROJECT_DIR$/app/src/main/cpp/include/zstandard/zBase.h" charset="windows-1251" />
+    <file url="file://$PROJECT_DIR$/app/src/main/cpp/include/zstandard/zClass.h" charset="windows-1251" />
+    <file url="file://$PROJECT_DIR$/app/src/main/cpp/include/zstandard/zJSON.h" charset="windows-1251" />
+    <file url="file://$PROJECT_DIR$/zstandard/src/main/cpp/include/zstandard/zJSON.h" charset="windows-1251" />
+    <file url="file://$PROJECT_DIR$/zstandard/src/main/cpp/include/zstandard/zstandard.h" charset="windows-1251" />
+  </component>
+</project>
