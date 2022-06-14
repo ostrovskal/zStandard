@@ -22,8 +22,8 @@ bool zFile::open(cstr pth, bool read, bool zipped, bool append) {
             }
         }
         if(!hz) {
-            u32 mode(read ? S_IREAD : S_IWRITE);
-            u32 access(read ? O_RDWR : O_WRONLY);
+            u32 mode(S_IWRITE | S_IREAD);
+            i32 access(read ? O_RDWR : O_WRONLY);
 #ifdef WIN32
             access |= O_BINARY;
 #endif
@@ -56,10 +56,10 @@ bool zFile::copy(cstr pth, int index) {
     return ret;
 }
 
-void* zFile::read(int* psize, void* ptr, unsigned size, int pos, int mode) const {
+void* zFile::read(int* psize, void* ptr, int size, int pos, int mode) const {
     bool ret(false);
     if(hz) {
-        ret = (unzUnzipToMem(hz->unz, pos, (u8**)&ptr, &size) == ZIP_OK);
+        ret = (unzUnzipToMem(hz->unz, pos, (u8**)&ptr, (u32*)&size) == ZIP_OK);
     } else if(hf > 0) {
         if(pos != -1) seek(pos, mode);
         ret = readf(hf, ptr, size) == (int)size;
@@ -68,15 +68,14 @@ void* zFile::read(int* psize, void* ptr, unsigned size, int pos, int mode) const
     return (ret ? ptr : nullptr);
 }
 
-void* zFile::readn(int* psize, unsigned size, int pos, int mode) const {
-    u8* ptr(nullptr);
-    bool ret(false);
+void* zFile::readn(int* psize, int size, int pos, int mode) const {
+    u8* ptr(nullptr); bool ret(false);
     if(hz) {
-        ret = (unzUnzipToMem(hz->unz, pos, &ptr, &size) == ZIP_OK);
+        ret = (unzUnzipToMem(hz->unz, pos, &ptr, (u32*)&size) == ZIP_OK);
     } else if(hf > 0) {
+        if(pos != -1) seek(pos, mode);
         if(!size) size = length();
         ptr = new u8[size + 1]; ptr[size] = 0;
-        if(pos != -1) seek(pos, mode);
         ret = readf(hf, ptr, size) == (int)size;
     }
     if(!ret) {
@@ -95,9 +94,10 @@ zString zFile::readString(int pos, int mode) const {
         char ch;
         int idx(0);
         while(readf(hf, &ch, 1) == 1) {
+            if(ch == '\r') continue;
+            if(ch == '\n') break;
             stmp[idx++] = ch;
             if(idx > 255) { stmp[idx] = 0; tmp += stmp; idx = 0; }
-            if(ch == '\n') break;
         }
         if(idx) { stmp[idx] = 0; tmp += stmp; }
     }
@@ -140,7 +140,7 @@ int zFile::tell() const {
 }
 
 bool zFile::seek(i32 pos, i32 mode) const {
-    return ((pos >= 0 && hf > 0) ? lseekf(hf, (long)pos, mode) == pos : false);
+    return ((pos >= 0 && hf > 0) && lseekf(hf, (long)pos, mode) == pos);
 }
 
 int zFile::countFiles() const {
@@ -157,12 +157,12 @@ int zFile::countFiles() const {
 bool zFile::info(zFileInfo& zfi, int zindex) const {
     if(hz) {
         if(unzLocateFile(hz->unz, &zinfo, zindex, nullptr, 0)) return false;
-        zfi.atime = zinfo.mtime; zfi.ctime = zinfo.mtime; zfi.mtime = zinfo.mtime;
+        zfi.atime = (time_t)zinfo.mtime; zfi.ctime = (time_t)zinfo.mtime; zfi.mtime = (time_t)zinfo.mtime;
         zfi.csize = zinfo.csize; zfi.usize = zinfo.usize;
         zfi.attr  = zinfo.attr;  zfi.index = zindex;
         strcpy(zfi.name, zinfo.name);
     } else if(hf > 0) {
-        struct stat st;
+        struct stat st{};
         if(fstat(hf, &st)) return false;
         zfi.atime = st.st_atime; zfi.mtime = st.st_mtime; zfi.ctime = st.st_ctime;
         zfi.csize = st.st_size;  zfi.usize = st.st_size;
@@ -182,24 +182,24 @@ void zFile::close() {
 
 int zFile::length() const {
     if(hf > 0) {
-        struct stat st;
+        struct stat st{};
         fstat(hf, &st);
-        return (int)st.st_size;
+        return (int)st.st_size - tell();
     }
-    return (hz ? zinfo.usize : 0);
+    return (hz ? (int)zinfo.usize : 0);
 }
 
 zArray<zFile::zFileInfo> zFile::find(const zString& path, cstr _msk) {
     zArray<zFileInfo> fl;
     static char fname[260];
-    DIR* dir; struct dirent* ent; zFileInfo info;
+    DIR* dir; struct dirent* ent; zFileInfo info{};
     zString msk(_msk); auto am(msk.split("*"));
     if((dir = opendir(path.str()))) {
         while((ent = readdir(dir))) {
-            if((strncmp(ent->d_name, ".", PATH_MAX) == 0) || (strncmp(ent->d_name, "..", PATH_MAX) == 0)) continue;
+            if((strcmp(ent->d_name, ".") == 0) || (strcmp(ent->d_name, "..") == 0)) continue;
             // поиск по маске
             bool res(true); auto _s(fname); auto namlen(strlen(ent->d_name));
-            strcpy(fname, ent->d_name); z_strlwr(fname);
+            strcpy(fname, ent->d_name);// z_strlwr(fname);
             for(int i = 0; i < am.size(); i++) {
                 auto m(am[i]);
                 if(m.isEmpty()) continue;
@@ -211,7 +211,7 @@ zArray<zFile::zFileInfo> zFile::find(const zString& path, cstr _msk) {
             if(res) {
                 res = false;
                 if(ent->d_type & DT_DIR) {
-                    struct stat st;
+                    struct stat st{};
                     if(!stat(path + ent->d_name, &st)) {
                         info.atime = st.st_atime; info.mtime = st.st_mtime; info.ctime = st.st_ctime;
                         info.csize = st.st_size;  info.usize = st.st_size;

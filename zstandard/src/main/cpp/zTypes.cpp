@@ -13,7 +13,28 @@ zColor zColor::blue(0xff0000ff);
 zColor zColor::white(0xffffffff);
 zColor zColor::gray(0xff808080);
 zColor zColor::shadow(0xaf101010);
-zColor zColor::black(0);
+zColor zColor::black(0xff000000);
+
+static u32 z_hex(u8 ch) {
+	if(ch >= '0' && ch <= '9') ch -= 48;
+	else if(ch >= 'A' && ch <= 'F') ch -= 55;
+	else if(ch >= 'a' && ch <= 'f') ch -= 87;
+	else ch = 0;
+	return ch;
+}
+
+zColor::zColor(cstr str) {
+	u32 argb(0xffffffff);
+	auto l(z_strlen(str));
+	if(l > 7) l = 8;
+	int tetra(15);
+	for(int i = 0; i < l; i++) {
+		auto ch(z_hex(str[(l - i) - 1]));
+		argb &= ~tetra; argb |= (ch << (i << 2));
+		tetra <<= 4;
+	}
+	set(argb);
+}
 
 void zColor::set(u32 rgba) {
 	vec[0] = (float)((rgba & 0x000000ffU) >>  0U) / 255.0f;
@@ -22,12 +43,20 @@ void zColor::set(u32 rgba) {
 	vec[3] = (float)((rgba & 0xff000000U) >> 24U) / 255.0f;
 }
 
-u32 zColor::toRGBA() const {
-    auto _r((int)(r * 255.0f));
-    auto _g((int)(g * 255.0f));
-    auto _b((int)(b * 255.0f));
-    auto _a((int)(a * 255.0f));
-    return _r | (_g << 8) | (_b << 16) | (_a << 24);
+u32 zColor::toABGR() const {
+	auto _r((int)(r * 255.0f));
+	auto _g((int)(g * 255.0f));
+	auto _b((int)(b * 255.0f));
+	auto _a((int)(a * 255.0f));
+	return _r | (_g << 8) | (_b << 16) | (_a << 24);
+}
+
+u32 zColor::toARGB() const {
+	auto _r((int)(r * 255.0f));
+	auto _g((int)(g * 255.0f));
+	auto _b((int)(b * 255.0f));
+	auto _a((int)(a * 255.0f));
+	return _b | (_g << 8) | (_r << 16) | (_a << 24);
 }
 
 const zColor& zColor::from(cstr s) {
@@ -171,10 +200,14 @@ const zMatrix& zMatrix::world(const zVec3& p, const zVec3& scale, const zQuat& o
 	return *this;
 }
 
-const zMatrix& zMatrix::ortho(float w, float h, float zn, float zf) {
+const zMatrix& zMatrix::ortho(float left, float right, float top, float bottom, float near, float far) {
 	identity();
-	_11 = 2.0f / w; _22 = 2.0f / h;
-	_33 = 1.0f / (zf - zn); _43 = zn / (zn - zf); _44 = 1.0f;
+	_11 = 2.0f / (right - left);
+	_22 = 2.0f / (top - bottom);
+	_33 = 1.0f / (far - near);
+	_41 = -(right + left) / (right - left);
+	_42 = -(top + bottom) / (top - bottom);
+	_43 = -near / (far - near);
 	return *this;
 }
 

@@ -3,15 +3,17 @@
 #include "zstandard/zSettings.h"
 #include "zstandard/zFile.h"
 
-zSettings::zSettings(cstr root, const zArray<zString>& opts) {
+zSettings::zSettings(cstr root, cstr* opts) {
     pathRoot = root; pathRoot.slash();
     pathFiles = pathRoot + "files/";
     pathCache = pathRoot + "cache/";
     // формируем массив опций со значениями по умолчанию
     int offs(0), plus(1); ZOPTION::TOPTION t(ZOPTION::TOPTION::_unk);
-    for(auto& o : opts) {
+    zString o;
+    while((o = *opts++).isNotEmpty()) {
         auto name(o.substrBefore('='));
-        if(name.isEmpty()) {
+        auto isname(name.isNotEmpty());
+        if(!isname) {
             // поиск значений
             auto cat(o.substrAfterLast(',').substrBeforeLast(']').lower());
             if(cat == "byt")      t = ZOPTION::TOPTION::_byt, plus = 1;
@@ -20,17 +22,16 @@ zSettings::zSettings(cstr root, const zArray<zString>& opts) {
             else if(cat == "int") t = ZOPTION::TOPTION::_int, plus = 4;
             else if(cat == "mru") t = ZOPTION::TOPTION::_mru, plus = 0;
             else if(cat == "pth") t = ZOPTION::TOPTION::_pth, plus = 0;
-        } else {
-            offs += plus;
+            name = o;
         }
         defs += ZOPTION(name, o.substrAfter('='), t, offs);
+        offs += isname * plus;
     }
 }
 
 void zSettings::init(u8* ptr, cstr name) {
-    zFile fr;
-    auto opts(defs);
-    if(fr.open(pathFiles + name, true, false)) {
+    zFile fr; auto opts(defs);
+    if(fr.open(pathCache + name, true, false)) {
         zString str;
         while((str = fr.readString()).isNotEmpty()) {
             auto opt(str.substrBefore('='));
@@ -100,14 +101,14 @@ zString zSettings::getOption(const u8* ptr, int idx) {
 
 void zSettings::save(u8* ptr, cstr name) {
     zFile file;
-    if(file.open(makePath(name, FOLDER_FILES), false, false)) {
-        int idx(0);
-        for(auto& opt : defs) {
-            auto cat(opt.name.startsWith('['));
-            file.writeString(opt.name, cat);
+    if(file.open(pathCache + name, false, false)) {
+        for(int i = 0 ; i < defs.size(); i++) {
+            auto opt(&defs[i]);
+            auto cat(opt->name.startsWith('['));
+            file.writeString(opt->name, cat);
             if(!cat) {
                 file.writeString("=", false);
-                file.writeString(getOption(ptr, idx++), true);
+                file.writeString(getOption(ptr, i), true);
             }
         }
         file.close();
@@ -144,5 +145,12 @@ zString zSettings::makePath(cstr pth, int type) const {
             return pathFiles + pth;
         default:
             return getPath(type);
+    }
+}
+
+void zSettings::setDefault(u8* ptr, cstr opt) {
+    auto idx(defs.indexOf(opt));
+    if(idx >= 0 && idx < defs.size()) {
+        setOption(ptr, defs[idx]);
     }
 }

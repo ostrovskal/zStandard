@@ -330,7 +330,7 @@ struct HZIP {
 
 #include "zZip.h"
 #include "zUnzip.h"
-
+#include "zRand.h"
 #include "zArray.h"
 #include "zString.h"
 #include "zFile.h"

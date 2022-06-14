@@ -56,12 +56,14 @@ inline int z_mod(int y, int z) {
 class zColor {
 public:
 	zColor() noexcept { set(0xffffffff); }
-	zColor(u32 rgba) { set(rgba); }
+	zColor(u32 argb) { set(argb); }
+	zColor(cstr str);
 	zColor(float _r, float _g, float _b, float _a) { make(_r, _g, _b, _a); }
 	operator const float*() const { return vec; }
 	void make(float _r, float _g, float _b, float _a) { vec[0] = _r; vec[1] = _g; vec[2] = _b; vec[3] = _a; }
-	void set(u32 rgba);
-    u32 toRGBA() const;
+	void set(u32 argb);
+	u32 toARGB() const;
+	u32 toABGR() const;
 	const zColor& from(cstr s);
 	u8* state(u8* ptr, bool save);
 	union {
@@ -447,7 +449,7 @@ public:
 	// мировая матрица
 	const zMatrix& world(const zVec3& pos, const zVec3& scale, const zQuat& orientation);
 	// ортографическая матрица
-	const zMatrix& ortho(float w, float h, float zn, float zf);
+	const zMatrix& ortho(float left, float right, float top, float bottom, float near, float far);
 	// перспективная матрица
 	const zMatrix& perspective(float w, float h, float zn, float zf);
 	// перспективная матрица из угла камеры

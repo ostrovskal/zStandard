@@ -33,9 +33,9 @@ public:
     // копировать/распаковать в папку
     bool copy(cstr path, i32 index);
     // прочитать в буфер
-    virtual void* read(i32* psize, void* ptr, u32 size = 0, i32 pos = -1, i32 mode = 0) const;
+    virtual void* read(i32* psize, void* ptr, i32 size = 0, i32 pos = -1, i32 mode = 0) const;
     // прочитать в автобуфер
-    virtual void* readn(i32* psize = nullptr, u32 size = 0, i32 pos = -1, i32 mode = 0) const;
+    virtual void* readn(i32* psize = nullptr, i32 size = 0, i32 pos = -1, i32 mode = 0) const;
     // прочитать строку
     virtual zString readString(i32 pos = -1, i32 mode = 0) const;
     // вернуть массив строк из файла

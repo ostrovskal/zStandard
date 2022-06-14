@@ -21,7 +21,7 @@ public:
         // смещение
         int offs;
     };
-    zSettings(cstr root, const zArray<zString>& opts);
+    zSettings(cstr root, cstr* opts);
 	virtual ~zSettings() { }
     // инициализация
     void init(u8* ptr, cstr name);
@@ -32,7 +32,9 @@ public:
     // октрыть файл из MRU
     cstr mruOpen(int index, cstr path, bool error);
     // вернуть значение по умолчанию
-    cstr getDefault(int idx) const { return defs[idx].value; }
+    cstr getDefault(cstr name) const { auto idx(defs.indexOf(name)); return (idx >= 0 && idx < defs.size() ? defs[idx].value.str() : nullptr); }
+    // установить значение по умолчанию для опции
+    void setDefault(u8* ptr, cstr opt);
     // сформировать путь от папки проги
     zString makePath(cstr pth, int type) const;
     // вернуть декоративную MRU строку

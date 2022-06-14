@@ -417,3 +417,5 @@ u32 z_hash(cstr str, i32 len) {
     }
     return hash;
 }
+
+long zRand::seed(0);

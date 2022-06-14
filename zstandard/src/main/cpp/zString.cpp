@@ -21,7 +21,7 @@ zString::zString(cstr cws, i32 len) {
 zString::zString(char ws, i32 rep) {
     init();
     auto buf(alloc(rep, false));
-    while(rep-- > 0) { *buf++ = ws; }
+    memset(buf, ws, rep);
 }
 
 const zString& zString::add(cstr wcs, i32 len) {
@@ -37,16 +37,8 @@ const zString& zString::make(cstr wcs, i32 len) {
 
 char* zString::alloc(i32 sz, bool is_copy) {
     if(sz) {
-        auto _old(buffer());
-        auto nsz(sz + 1);
+        auto _old(buffer()); auto nsz(sz + 1);
         if(nsz > _str.len_buf) {
-            if(nsz < 512) {
-                nsz--;
-                nsz |= nsz >> 1; nsz |= nsz >> 2;
-                nsz |= nsz >> 4; nsz |= nsz >> 8;
-                nsz |= nsz >> 16;
-                nsz++;
-            }
             // выделим память под новый буфер
             auto _new(new char[nsz]);
             // скопировать старый, если необходимо
@@ -56,7 +48,7 @@ char* zString::alloc(i32 sz, bool is_copy) {
             // инициализируем новый
             _str.len_buf	= nsz;
             _str.ptr		= _new;
-            _old = _new;
+            _old            = _new;
         }
         _str.len = (int)sz;
         _old[sz] = 0;
